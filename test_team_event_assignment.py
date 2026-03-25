@@ -1,4 +1,6 @@
 import unittest
+import io
+import sys
 
 from team_event_assignment import parse_input, solve_ilp
 
@@ -12,9 +14,6 @@ class TestConflictAssignments(unittest.TestCase):
             + "\n".join([f"S{i:02d} " + " ".join(["1"] * 23) for i in range(15)])
             + "\n"
         )
-        import io
-        import sys
-
         old_stdin = sys.stdin
         try:
             sys.stdin = io.StringIO(data)
@@ -34,9 +33,9 @@ class TestConflictAssignments(unittest.TestCase):
         event_blocks[1] = "A"
 
         scores = []
-        for s in range(n):
+        for student_idx in range(n):
             row = [10] * 23
-            if s < 2:
+            if student_idx < 2:
                 row[0] = 1000
                 row[1] = 1000
             scores.append(row)

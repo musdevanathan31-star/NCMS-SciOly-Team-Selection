@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from collections import defaultdict
+import re
 from typing import List, Tuple, Dict, Optional
 
 
@@ -49,12 +50,19 @@ def parse_input() -> Tuple[List[str], List[int], List[Optional[str]], List[str],
     event_blocks: List[Optional[str]] = []
 
     for tok in header[1:]:
+        if tok.count("@") > 1:
+            raise ValueError(f"Bad event token '{tok}': only one '@block' suffix is allowed.")
+
         base_tok = tok
         block: Optional[str] = None
         if "@" in tok:
             base_tok, block = tok.rsplit("@", 1)
-            if not block:
+            if block == "":
                 raise ValueError(f"Bad event token '{tok}': empty conflict block after '@'.")
+            if not re.fullmatch(r"[A-Za-z0-9_-]+", block):
+                raise ValueError(
+                    f"Bad event token '{tok}': conflict block must use only letters, numbers, '_' or '-'."
+                )
 
         if ":" not in base_tok:
             raise ValueError(f"Event token '{tok}' must be formatted as Name:slots (e.g., E08:3).")
