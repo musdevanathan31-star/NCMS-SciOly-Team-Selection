@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import sys
-from typing import List, Tuple, Dict
+from collections import defaultdict
+from typing import List, Tuple, Dict, Optional
 
 
 EVENTS = 23
@@ -14,7 +15,7 @@ PENALTY_THIRD_EVENT = 50
 PENALTY_FOURTH_EVENT = 120
 
 
-def parse_input() -> Tuple[List[str], List[int], List[str], List[List[int]]]:
+def parse_input() -> Tuple[List[str], List[int], List[Optional[str]], List[str], List[List[int]]]:
     """
     Input format (stdin):
       N event1:slots event2:slots ... event23:slots
@@ -45,11 +46,19 @@ def parse_input() -> Tuple[List[str], List[int], List[str], List[List[int]]]:
 
     event_names: List[str] = []
     event_slots: List[int] = []
+    event_blocks: List[Optional[str]] = []
 
     for tok in header[1:]:
-        if ":" not in tok:
+        base_tok = tok
+        block: Optional[str] = None
+        if "@" in tok:
+            base_tok, block = tok.rsplit("@", 1)
+            if not block:
+                raise ValueError(f"Bad event token '{tok}': empty conflict block after '@'.")
+
+        if ":" not in base_tok:
             raise ValueError(f"Event token '{tok}' must be formatted as Name:slots (e.g., E08:3).")
-        name, slots_s = tok.rsplit(":", 1)
+        name, slots_s = base_tok.rsplit(":", 1)
         if not name:
             raise ValueError(f"Bad event token '{tok}': empty name.")
         try:
@@ -60,6 +69,7 @@ def parse_input() -> Tuple[List[str], List[int], List[str], List[List[int]]]:
             raise ValueError(f"Bad slots in token '{tok}': slots must be positive.")
         event_names.append(name)
         event_slots.append(slots)
+        event_blocks.append(block)
 
     if len(data) != 1 + n:
         raise ValueError(f"Expected {n} student lines after header, got {len(data) - 1}.")
@@ -76,10 +86,12 @@ def parse_input() -> Tuple[List[str], List[int], List[str], List[List[int]]]:
         student_names.append(parts[0])
         scores.append(list(map(int, parts[1:])))
 
-    return event_names, event_slots, student_names, scores
+    return event_names, event_slots, event_blocks, student_names, scores
 
 
-def solve_ilp(scores: List[List[int]], event_slots: List[int]) -> Tuple[List[int], List[List[int]], List[int], int]:
+def solve_ilp(
+    scores: List[List[int]], event_slots: List[int], event_blocks: Optional[List[Optional[str]]] = None
+) -> Tuple[List[int], List[List[int]], List[int], int]:
     """
     ILP model:
       - choose TEAM_SIZE students
@@ -97,6 +109,8 @@ def solve_ilp(scores: List[List[int]], event_slots: List[int]) -> Tuple[List[int
     E = len(event_slots)
     if E != EVENTS:
         raise ValueError(f"Expected event_slots length {EVENTS}, got {E}.")
+    if event_blocks is not None and len(event_blocks) != E:
+        raise ValueError(f"Expected event_blocks length {E}, got {len(event_blocks)}.")
 
     y = pulp.LpVariable.dicts("y", range(n), 0, 1, cat="Binary")  # selected
     u = pulp.LpVariable.dicts("u", range(n), 0, 1, cat="Binary")  # used at least once
@@ -136,6 +150,16 @@ def solve_ilp(scores: List[List[int]], event_slots: List[int]) -> Tuple[List[int
         prob += load[s] - 2 <= 2 * t3[s]
         prob += load[s] - 3 <= 1 * t4[s]
         prob += t4[s] <= t3[s]
+
+    if event_blocks is not None:
+        events_by_block: Dict[str, List[int]] = defaultdict(list)
+        for e, block in enumerate(event_blocks):
+            if block:
+                events_by_block[block].append(e)
+        for block_events in events_by_block.values():
+            if len(block_events) > 1:
+                for s in range(n):
+                    prob += pulp.lpSum(x[s][e] for e in block_events) <= 1
 
     prob.solve(pulp.PULP_CBC_CMD(msg=False))
 
@@ -244,7 +268,7 @@ def pretty_print_results(
 
 
 def main() -> None:
-    event_names, event_slots, student_names, scores = parse_input()
+    event_names, event_slots, event_blocks, student_names, scores = parse_input()
 
     if len(scores) < TEAM_SIZE:
         raise ValueError(f"Need at least {TEAM_SIZE} students to select a team, but got N={len(scores)}.")
@@ -256,7 +280,7 @@ def main() -> None:
             f"(TEAM_SIZE*MAX_EVENTS_PER_STUDENT)."
         )
 
-    team, assignments_by_event, loads, perf = solve_ilp(scores, event_slots)
+    team, assignments_by_event, loads, perf = solve_ilp(scores, event_slots, event_blocks)
     pretty_print_results(event_names, event_slots, student_names, scores, team, assignments_by_event, loads, perf)
 
 

@@ -17,6 +17,7 @@ The assignment is solved as an **optimization problem (ILP)** to maximize total 
 - **Every selected student must be used at least once** (so the “team list” matches the students actually competing).
 - Each student may participate in **at most 4 events**.
 - Preference: keep students at **≤ 2 events** when possible (implemented as a soft penalty for a 3rd/4th event).
+- Students are not assigned to events in the same **conflict block** (optional, configured in header).
 
 ---
 
@@ -42,11 +43,13 @@ The program reads from **stdin**.
 ### Header row (single line)
 
 ```
-N event1:slots event2:slots ... event23:slots
+N event1:slots[@block] event2:slots[@block] ... event23:slots[@block]
 ```
 
 - `N` is the number of students.
 - Each `event:slots` token gives the event name and how many students are needed for that event.
+- Optional `@block` marks events that run at the same time; a student can be assigned to at most one event in each block.
+  - Example: `Anatomy_and_Physiology:2@B1 Disease_Detectives:2@B1` means those two events conflict.
 
 ### Student rows (N lines)
 
