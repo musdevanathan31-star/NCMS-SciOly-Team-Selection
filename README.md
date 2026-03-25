@@ -133,5 +133,3 @@ The program prints:
 
 - To change the maximum number of events per student, adjust:
   - `MAX_EVENTS_PER_STUDENT`
-
-If you want additional constraints (e.g., “at most 1 build event per student”, “specific students cannot do certain events”, “pairing constraints”, etc.), those can be added to the ILP model.
