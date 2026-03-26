@@ -1,6 +1,7 @@
 import unittest
 import io
 import sys
+from pathlib import Path
 
 from team_event_assignment import parse_input, solve_ilp
 
@@ -44,6 +45,45 @@ class TestConflictAssignments(unittest.TestCase):
         event0 = set(assignments_by_event[0])
         event1 = set(assignments_by_event[1])
         self.assertEqual(set(), event0.intersection(event1))
+
+    def test_parse_requested_names_input_file(self):
+        expected_names = [
+            "Amelia",
+            "Benjamin",
+            "Charlotte",
+            "Daniel",
+            "Elijah",
+            "Finn",
+            "Grace",
+            "Henry",
+            "Isabella",
+            "Jack",
+            "Kai",
+            "Liam",
+            "Mia",
+            "Noah",
+            "Olivia",
+            "Penelope",
+            "Quinn",
+            "Riley",
+            "Sophia",
+            "Theo",
+            "Uma",
+            "Violet",
+            "Wyatt",
+            "Xavier",
+            "Yara",
+            "Zoe",
+        ]
+        input_path = Path(__file__).resolve().parent / "test_input_requested_names.txt"
+        old_stdin = sys.stdin
+        try:
+            sys.stdin = io.StringIO(input_path.read_text(encoding="utf-8"))
+            _, _, _, student_names, _ = parse_input()
+        finally:
+            sys.stdin = old_stdin
+
+        self.assertEqual(expected_names, student_names)
 
 
 if __name__ == "__main__":
